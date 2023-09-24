@@ -21,12 +21,10 @@ class Utils():
                 features[int(feature_id)] = feature_value
         return {"class": class_label, **features}
 
-    def load_data(self, file_name: str) -> pd.DataFrame:
+    def load_data_txt(self, file_name: str) -> pd.DataFrame:
        # Construct the full file path
         parsed_path = os.path.join(
-            Path().resolve(), "data", file_name)
-
-        print(parsed_path)
+            Path().resolve().parent, "data", file_name)
 
         # Read the text file into a list of lines
         data_list = []
@@ -36,5 +34,14 @@ class Utils():
 
         # Convert the list of dictionaries into a pandas DataFrame
         df = pd.DataFrame(data_list)
+
+        return df
+
+    def load_data_csv(self, file_name: str) -> pd.DataFrame:
+       # Construct the full file path
+        parsed_path = os.path.join(
+            Path().resolve().parent, "data", file_name)
+
+        df = pd.read_csv(parsed_path)
 
         return df
