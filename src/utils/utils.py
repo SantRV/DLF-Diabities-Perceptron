@@ -24,7 +24,7 @@ class Utils():
     def load_data_txt(self, file_name: str) -> pd.DataFrame:
        # Construct the full file path
         parsed_path = os.path.join(
-            Path().resolve().parent, "data", file_name)
+            Path().resolve(), "data", file_name)
 
         # Read the text file into a list of lines
         data_list = []
