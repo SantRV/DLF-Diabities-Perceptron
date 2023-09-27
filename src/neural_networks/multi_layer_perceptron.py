@@ -1,9 +1,9 @@
 import torch.nn as nn
 
 
-class Perceptron(nn.Module):
+class MLP(nn.Module):
     def __init__(self, input_size, hidden_size=16):
-        super(Perceptron, self).__init__()
+        super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_size, 1)

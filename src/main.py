@@ -1,5 +1,7 @@
 
 
+from model_service.model_service import ModelService
+from neural_networks.multi_layer_perceptron import MLP
 from neural_networks.perceptron import Perceptron
 from data_loader.torch_data import TorchData
 from utils.utils import Utils
@@ -50,7 +52,48 @@ def train(dataloader, model, loss_fn, optimiser, epoch, epochs):
 def main():
     file_name = "diabetes_pre_processed.txt"
     num_features = 8
+    epochs = 100
 
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    model = MLP(num_features)
+    optimiser = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    # Binary classification
+    criterion = nn.BCEWithLogitsLoss()
+
+    # Model service
+    model_service = ModelService(
+        num_epoch=epochs,
+        file_path=file_name,
+        model=model,
+        criterion_func=criterion,
+        optimiser_func=optimiser,
+        save_file_name="best_model.pt",
+        performance_metric="loss",
+        save_model=True,
+        training_size=0.7,
+        validation_size=0.15,
+        device=device,
+        batch_size=5
+    )
+
+    # Start program
+    model_service.start()
+
+    return
+
+
+def main2():
+    file_name = "diabetes_pre_processed.txt"
+    num_features = 8
+    epochs = 100
     device = (
         "cuda"
         if torch.cuda.is_available()
