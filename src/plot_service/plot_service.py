@@ -29,13 +29,14 @@ class PlotService():
         epochs = list(range(epoch))
 
         # Create a line graph for each model's loss
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(8, 40))
 
         # Create line for each model
         y_min = float('inf')
         y_max = 0
         for model_name in model_metrics.keys():
             for metric_name in metric_names:
+                
                 plt.plot(epochs, model_metrics[model_name].get_metric(metric_name),
                          linestyle='-', label=f"{model_name} - {metric_name}")
 
@@ -48,7 +49,7 @@ class PlotService():
                         model_metrics[model_name].get_metric(metric_name))
 
         # Add labels and title
-        plt.yticks(np.arange(y_min, y_max+0.1, 0.1))
+        # plt.yticks(np.arange(y_min, y_max+0.1, 0.1))
         plt.xlabel('Number of Epochs')
         plt.ylabel(f'Value')
         plt.title(title)
@@ -65,8 +66,8 @@ class PlotService():
         return
 
     def save_plot(self, file_path: str):
-        if not os.path.exists('NN/results'):
-            os.makedirs('NN/results')
+        # if not os.path.exists('NN/results'):
+        #     os.makedirs('NN/results')
 
         # Saving the plot to a file
         plt.savefig(file_path)
@@ -76,7 +77,7 @@ class PlotService():
 
         if target_column == None:
             correlation_matrix = data.corr()
-            plt.figure(figsize=(8, 6))
+            plt.figure(figsize=(8, 40))
             sns.heatmap(correlation_matrix, annot=True,
                         cmap='coolwarm', vmin=-1, vmax=1)
             plt.title('Correlation Heatmap')

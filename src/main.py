@@ -1,5 +1,6 @@
 
 
+import copy
 import queue
 import threading
 from data_loader.data_loader_service import DataLoaderService
@@ -51,26 +52,31 @@ def worker_function(model_name, epochs, file_name, model, criterion, optimiser, 
 def GridSearch():
     plot_service = PlotService()
 
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
+    # device = (
+    #     "cuda"
+    #     if torch.cuda.is_available()
+    #     else "mps"
+    #     if torch.backends.mps.is_available()
+    #     else "cpu"
+    # )
+
+    device = "cpu"
 
     file_name = "diabetes_pre_processed.txt"
     num_features = 8
-    epochs = 2
-    batch_size = 5
+    epochs = 300
+    batch_size = 100
 
     perceptron = Perceptron(num_features, "Perceptron")
-    mlp_16 = MLP(num_features, "MLP_16")
+    mlp_1 = MLP(num_features, "MLP_16")
+    mlp_16 = copy.deepcopy(mlp_1)
     mlp_32 = MLP(num_features, "MLP_32", 32)
     dmlp_32 = DeepMLP(num_features, "DeepMLP_32", [16, 32, 16])
     dmlp_64 = DeepMLP(num_features, "DeepMLP_64", [32, 64, 32])
 
-    optimiser = torch.optim.SGD(perceptron.parameters(), lr=0.1)
+    initial_lr = 0.1
+
+    optimiser = torch.optim.SGD(perceptron.parameters(), lr=initial_lr)
 
     # Binary classification
     criterion = nn.BCEWithLogitsLoss()
@@ -134,13 +140,13 @@ def GridSearch():
     ))
 
     # Initialise in threats
-    thread1.start()
+    # thread1.start()
     thread2.start()
     thread3.start()
     thread4.start()
     thread5.start()
 
-    thread1.join()
+    # thread1.join()
     thread2.join()
     thread3.join()
     thread4.join()
@@ -156,8 +162,21 @@ def GridSearch():
     for model in data:
         models[model.model_name] = model
 
+    # plot_service.plot_epochs(
+    #     len(data[0].get_metric("loss")), models, f"AllModelsLoss_epochs_{epochs}_batch_{batch_size}_lr_{initial_lr}", ["loss"])
+    
     plot_service.plot_epochs(
-        epochs, models, "All Models Loss", ["loss"])
+        len(data[0].get_metric("accuracy")), models, f"AllModelsAccuracy_epochs_{epochs}_batch_{batch_size}_lr_{initial_lr}", ["accuracy"])
+    
+    plot_service.plot_epochs(
+        len(data[0].get_metric("precision")), models, f"AllModelsPrecision_epochs_{epochs}_batch_{batch_size}_lr_{initial_lr}", ["precision"])
+    
+
+    plot_service.plot_epochs(
+        len(data[0].get_metric("recall")), models, f"AllModelsRecall_epochs_{epochs}_batch_{batch_size}_lr_{initial_lr}", ["recall"])
+    
+    # plot_service.plot_epochs(
+    #     epochs, models, f"AllModelsLearningRate_epochs_{epochs}_batch_{batch_size}_lr_{initial_lr}", ["learning_rate"])
 
     return
 

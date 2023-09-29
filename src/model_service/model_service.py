@@ -43,41 +43,44 @@ class ModelService():
         pass
 
     def train_model_one_epoch(self, model, epoch: int, dataloader):
-        # Set to training mode
-        model.train()
+        try:
+            # Set to training mode
+            model.train()
 
-        running_loss = 0.0
+            running_loss = 0.0
 
-        # Use enumerate to get the batch index
-        for i, data in enumerate(dataloader, 0):
-            inputs, labels = data
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
+            # Use enumerate to get the batch index
+            for i, data in enumerate(dataloader, 0):
+                inputs, labels = data
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-            # Zero parameter gradients
-            self.optimiser_func.zero_grad()
+                # Zero parameter gradients
+                self.optimiser_func.zero_grad()
 
-            # Forward pass
-            outputs = model(inputs)
+                # Forward pass
+                outputs = model(inputs)
 
-            # Loss computation
-            loss = self.criterion_func(outputs, labels)
+                # Loss computation
+                loss = self.criterion_func(outputs, labels)
 
-            # Backpropagation
-            loss.backward()
+                # Backpropagation
+                loss.backward()
 
-            # Optimization step
-            self.optimiser_func.step()
+                # Optimization step
+                self.optimiser_func.step()
 
-            # Accumulate loss
-            running_loss += loss.item()
+                # Accumulate loss
+                running_loss += loss.item()
 
-            # Print statistics every 2000 minibatches
-            if (i + 1) % 50 == 0:
-                print(
-                    f"Epoch [{epoch + 1}, Batch {i + 1}] Loss: {running_loss / 50:.3f}")
-                running_loss = 0.0
+                # Print statistics every 2000 minibatches
+                if (i + 1) % 50 == 0:
+                    print(
+                        f"Epoch [{epoch + 1}, Batch {i + 1}] Loss: {running_loss / 50:.3f}")
+                    running_loss = 0.0
 
-        return running_loss
+            return running_loss
+        except:
+            print("error")
 
     def comp_accuracy(self, outputs, labels):
         """
@@ -265,5 +268,31 @@ class ModelService():
         # Train model
         train_performance, valid_performance = self.train_model(
             train_loader, val_loader)
+        
+        # Load model
+        best_model =self.model
+        checkpoint = torch.load(self.save_file_name)
+        best_model.load_state_dict(checkpoint)
+        
+        perm = NNMetrics(best_model.name)
+        test_perform = copy.deepcopy(perm)
+        for data in test_loader:
+            inputs, labels = data
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-        return train_performance, valid_performance
+            # Predictions -> Forward pass
+            prediction = best_model(inputs)
+
+            # Parse predictions
+            binary_predictions = (prediction >= 0.5).float()
+
+            closs, accuracy, recall, precision = self.evaluate_model(
+                binary_predictions, labels)
+            
+          
+            test_perform.loss.append(closs)
+            test_perform.accuracy.append(accuracy)
+            test_perform.precision.append(recall)
+            test_perform.recall.append(precision)
+
+        return train_performance, test_perform
