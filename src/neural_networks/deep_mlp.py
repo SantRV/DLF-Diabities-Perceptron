@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class DeepMLP(nn.Module):
-    def __init__(self, input_size, hidden_sizes=[16, 32, 16], output_size=1):
+    def __init__(self, input_size, name, hidden_sizes=[16, 32, 16], output_size=1):
         super(DeepMLP, self).__init__()
         self.layers = nn.ModuleList()
 
@@ -22,6 +22,8 @@ class DeepMLP(nn.Module):
         # Output layer
         self.layers.append(nn.Linear(hidden_sizes[-1], output_size))
         self.layers.append(nn.Sigmoid())
+
+        self.name = name
 
     def forward(self, x):
         for layer in self.layers:

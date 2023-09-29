@@ -1,6 +1,9 @@
+import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
+from models.neural_network_metrics import NNMetrics
 
 
 class PlotService():
@@ -20,6 +23,53 @@ class PlotService():
 
         # Show the plot
         plt.show()
+
+    def plot_epochs(self, epoch, model_metrics: dict, title: str, metric_names: []):
+        # Epochs list
+        epochs = list(range(epoch))
+
+        # Create a line graph for each model's loss
+        plt.figure(figsize=(8, 6))
+
+        # Create line for each model
+        y_min = float('inf')
+        y_max = 0
+        for model_name in model_metrics.keys():
+            for metric_name in metric_names:
+                plt.plot(epochs, model_metrics[model_name].get_metric(metric_name),
+                         linestyle='-', label=f"{model_name} - {metric_name}")
+
+                if min(model_metrics[model_name].get_metric(metric_name)) < y_min:
+                    y_min = min(
+                        model_metrics[model_name].get_metric(metric_name))
+
+                if max(model_metrics[model_name].get_metric(metric_name)) > y_max:
+                    y_max = max(
+                        model_metrics[model_name].get_metric(metric_name))
+
+        # Add labels and title
+        plt.yticks(np.arange(y_min, y_max+0.1, 0.1))
+        plt.xlabel('Number of Epochs')
+        plt.ylabel(f'Value')
+        plt.title(title)
+
+        # Show legend
+        plt.legend()
+
+        # Show gridlines
+        plt.grid(True)
+
+        # Show the plot
+        self.save_plot(f"NN/results/{title}.png")
+        plt.show()
+        return
+
+    def save_plot(self, file_path: str):
+        if not os.path.exists('NN/results'):
+            os.makedirs('NN/results')
+
+        # Saving the plot to a file
+        plt.savefig(file_path)
 
     def plot_correlations(self, input_data, target_column=None):
         data = input_data.copy()

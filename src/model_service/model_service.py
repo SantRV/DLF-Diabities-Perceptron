@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 import numpy as np
 from data_loader.data_loader_service import DataLoaderService
+from models.neural_network_metrics import NNMetrics
 
 
 class ModelService():
@@ -142,13 +143,7 @@ class ModelService():
         return loss, accuracy, precision, recall
 
     def validate_model(self, model, dataloader):
-        results = {
-            "loss": [],
-            "accuracy": [],
-            "recall": [],
-            "precision": []
-        }
-
+        results = NNMetrics()
         # Set to evaluation mode
         model.eval()
 
@@ -167,10 +162,10 @@ class ModelService():
                 binary_predictions, labels)
 
             # Update metrics
-            results["loss"] = closs
-            results["accuracy"] = accuracy
-            results["precision"] = precision
-            results["recall"] = recall
+            results.loss = [closs]
+            results.accuracy = [accuracy]
+            results.precision = [precision]
+            results.recall = [recall]
 
         return results
 
@@ -178,114 +173,89 @@ class ModelService():
         if current_best == None:
             return True
 
-        if performance[self.performance_metric] < current_best:
+        if performance.get_metric(
+                self.performance_metric)[0] < current_best:
             return True
 
         return False
 
     def train_model(self, trainloader, validloader):
         initial_lr = 0.1
-        train_performance = []
-        valid_performance = []
-        vaccuracies = []
         best_valid_performance = None
+
+        # Metrics
+        train_metrics = NNMetrics(self.model.name)
+        valid_metrics = NNMetrics(self.model.name)
 
         last_converge = 0
         num_convergence = 1
+
         for epoch in range(self.num_epoch):
+            print(f"---- EPOCH {epoch} --- ")
+
             # Train model and get running loss
             ctrain_perform = self.train_model_one_epoch(
                 self.model, epoch, trainloader)
-            train_performance.append(ctrain_perform)
 
-            # Check performance on validatation data
+            # Check performance on validation data
             cvalid_perform = self.validate_model(self.model, validloader)
-            valid_performance.append(cvalid_perform)
-
-            vaccuracies.append(cvalid_perform["accuracy"])
 
             # Save if best model
-            if self.__compare_performance(best_valid_performance, cvalid_perform):
+            if best_valid_performance is None or self.__compare_performance(best_valid_performance, cvalid_perform):
                 # Update current best
-                best_valid_performance = cvalid_perform[self.performance_metric]
+                best_valid_performance = cvalid_perform.get_metric(
+                    self.performance_metric)[0]
 
                 if self.save_model:
-                    torch.save(
-                        self.model.state_dict(), f"{self.save_file_name}")
+                    torch.save(self.model.state_dict(), self.save_file_name)
 
                 # Best model
                 print(
-                    f"=> Best Model {self.performance_metric}: {cvalid_perform[self.performance_metric]} {cvalid_perform}")
+                    f"=> Best Model {self.performance_metric}: {best_valid_performance}")
 
                 # Adjust learning rate
-                for param_group in self.optimiser_func.param_groups:
-                    param_group['lr'] = (initial_lr) / (num_convergence)
-                    print(
-                        f"=>[[Convergence {num_convergence}] Learning Rate {(initial_lr) / (num_convergence)} ")
-
-                    initial_lr = (initial_lr) / (num_convergence)
-
-                    num_convergence += 1
-
-            else:
-                # Reduce learning rate linearly
-                # Adjust learning rate
-                for param_group in self.optimiser_func.param_groups:
-                    initial_lr = initial_lr * 0.9
-                    param_group['lr'] = initial_lr
-
-            # if last_converge > 20:
-            #     # Adjust learning rate
-            #     for param_group in self.optimiser_func.param_groups:
-            #         param_group['lr'] = (initial_lr) / num_convergence + 1
-            #         print(
-            #             f"=>[[Convergence {num_convergence}] Learning Rate {(initial_lr ) / num_convergence + 1} ")
-
-            #         initial_lr = (initial_lr) / num_convergence + 1
-
-            #         num_convergence += 1
-
-            if last_converge > 100:
-
-                # Adjust learning rate
-                initial_lr = 2
+                initial_lr = initial_lr * 0.5
                 for param_group in self.optimiser_func.param_groups:
                     param_group['lr'] = initial_lr
                 print(
                     f"=>[[Convergence {num_convergence}] Learning Rate {initial_lr} ")
+                num_convergence += 1
+                last_converge = 0
+            else:
+                last_converge += 1
 
+            if last_converge > 100:
+                # Adjust learning rate
+                initial_lr = initial_lr * 2
+                for param_group in self.optimiser_func.param_groups:
+                    param_group['lr'] = initial_lr
+                print(
+                    f"=>[[Convergence {num_convergence}] Learning Rate {initial_lr} ")
+                num_convergence += 1
                 last_converge = 0
 
-            last_converge += 1
+            # Update metrics training
+            # train_metrics.loss.append(ctrain_perform)
+
+            # Update metrics validation
+            valid_metrics.loss.append(cvalid_perform.loss[0])
+
+            valid_metrics.accuracy.append(cvalid_perform.accuracy[0])
+            valid_metrics.precision.append(cvalid_perform.precision[0])
+            valid_metrics.recall.append(cvalid_perform.recall[0])
+            valid_metrics.learning_rate.append(initial_lr)
 
         print(
-            f"=> Final Best Model {self.performance_metric}: {best_valid_performance} {cvalid_perform}")
-        print(f"Mean accuracy {np.mean(vaccuracies)}")
+            f"=> Final Best Model {self.performance_metric}: {best_valid_performance}")
 
-        # Get accuracy of best model
-        best_model = self.model
-        best_model.load_state_dict(torch.load(self.save_file_name))
-        best_results = {
-            "loss": [],
-            "accuracy": [],
-            "recall": [],
-            "precision": []
-        }
-        for epoch in range(self.num_epoch):
-            cvalid_perform = self.validate_model(best_model, validloader)
-            best_results["loss"].append(cvalid_perform["loss"])
-            best_results["accuracy"].append(cvalid_perform["accuracy"])
-            best_results["recall"].append(cvalid_perform["recall"])
-            best_results["precision"].append(cvalid_perform["precision"])
+        return train_metrics, valid_metrics
 
-            print(
-                f"[Epoch {epoch}] Loss {np.mean(cvalid_perform['loss'])} Accuracy {np.mean(cvalid_perform['accuracy'])}")
+    def comp_performance(self, model, dataloader):
+        cvalid_perform = self.validate_model(self.model, dataloader)
 
-        print(
-            f"==> Best Performance: Loss {np.mean(best_results['loss'])} Accuracy {np.mean(best_results['accuracy'])}")
-        return train_performance, valid_performance
+        print("Data", cvalid_perform)
 
-    def start(self):
+    def start_model(self):
         # Load data
         train_loader, val_loader, test_loader = self.data_service.get_data(
             self.file_path, self.batch_size, True, self.training_size, self.validation_size)
@@ -294,9 +264,4 @@ class ModelService():
         train_performance, valid_performance = self.train_model(
             train_loader, val_loader)
 
-        # Print Results
-        print("--- Training Performance ----")
-        print(train_performance)
-
-        print("--- Validation Performance ----")
-        print(valid_performance)
+        return train_performance, valid_performance

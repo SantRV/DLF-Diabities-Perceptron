@@ -1,7 +1,10 @@
 
 
+import queue
+import threading
 from data_loader.data_loader_service import DataLoaderService
 from model_service.model_service import ModelService
+from models.neural_network_metrics import NNMetrics
 from neural_networks.deep_mlp import DeepMLP
 from neural_networks.multi_layer_perceptron import MLP
 from neural_networks.perceptron import Perceptron
@@ -14,10 +17,39 @@ import pandas as pd
 from torch.utils.data import DataLoader
 
 
-def main():
-    file_name = "diabetes_pre_processed.txt"
-    num_features = 8
-    epochs = 300
+def train_model(model_name, epochs, file_name, model, criterion, optimiser, device, batch_size):
+    model_service = ModelService(
+        num_epoch=epochs,
+        file_path=file_name,
+        model=model,
+        criterion_func=criterion,
+        optimiser_func=optimiser,
+        save_file_name=f"{model_name}_best_model.pt",
+        performance_metric="loss",
+        save_model=True,
+        training_size=0.7,
+        validation_size=0.15,
+        device=device,
+        batch_size=batch_size
+    )
+
+    # Start program
+    train_performance, valid_performance = model_service.start_model()
+
+    return valid_performance
+
+
+def worker_function(model_name, epochs, file_name, model, criterion, optimiser, device, batch_size, queue):
+    # Perform your algorithm computations
+    # Add the results to the queue
+    print(f"Creating Worker {model_name}\n")
+    results: NNMetrics = train_model(
+        model_name, epochs, file_name, model, criterion, optimiser, device, batch_size)
+    queue.put(results)
+
+
+def GridSearch():
+    plot_service = PlotService()
 
     device = (
         "cuda"
@@ -27,7 +59,145 @@ def main():
         else "cpu"
     )
 
-    model = DeepMLP(num_features)
+    file_name = "diabetes_pre_processed.txt"
+    num_features = 8
+    epochs = 2
+    batch_size = 5
+
+    perceptron = Perceptron(num_features, "Perceptron")
+    mlp_16 = MLP(num_features, "MLP_16")
+    mlp_32 = MLP(num_features, "MLP_32", 32)
+    dmlp_32 = DeepMLP(num_features, "DeepMLP_32", [16, 32, 16])
+    dmlp_64 = DeepMLP(num_features, "DeepMLP_64", [32, 64, 32])
+
+    optimiser = torch.optim.SGD(perceptron.parameters(), lr=0.1)
+
+    # Binary classification
+    criterion = nn.BCEWithLogitsLoss()
+
+    result_queue = queue.Queue()
+
+    thread1 = threading.Thread(target=worker_function, args=(
+        perceptron.name,
+        epochs,
+        file_name,
+        perceptron,
+        criterion,
+        optimiser,
+        device,
+        batch_size,
+        result_queue,
+    ))
+    thread2 = threading.Thread(target=worker_function, args=(
+        mlp_16.name,
+        epochs,
+        file_name,
+        mlp_16,
+        criterion,
+        optimiser,
+        device,
+        batch_size,
+        result_queue,
+    ))
+    thread3 = threading.Thread(target=worker_function, args=(
+        mlp_32.name,
+        epochs,
+        file_name,
+        mlp_32,
+        criterion,
+        optimiser,
+        device,
+        batch_size,
+        result_queue,
+    ))
+    thread4 = threading.Thread(target=worker_function, args=(
+        dmlp_32.name,
+        epochs,
+        file_name,
+        dmlp_32,
+        criterion,
+        optimiser,
+        device,
+        batch_size,
+        result_queue,
+    ))
+    thread5 = threading.Thread(target=worker_function, args=(
+        dmlp_64.name,
+        epochs,
+        file_name,
+        dmlp_64,
+        criterion,
+        optimiser,
+        device,
+        batch_size,
+        result_queue,
+    ))
+
+    # Initialise in threats
+    thread1.start()
+    thread2.start()
+    thread3.start()
+    thread4.start()
+    thread5.start()
+
+    thread1.join()
+    thread2.join()
+    thread3.join()
+    thread4.join()
+    thread5.join()
+
+    # Collect and process the results from the queue
+    data = []
+    while not result_queue.empty():
+        results: NNMetrics = result_queue.get()
+        data.append(results)
+
+    plot_service.plot_epochs(
+        epochs, data, "All Models Loss", ["loss"])
+
+    return
+
+
+def run_all():
+    file_name = "diabetes_pre_processed.txt"
+    num_features = 8
+
+    # Set models
+    perceptron = Perceptron(num_features)
+    mlp_16 = MLP(num_features)
+    mlp_32 = MLP(num_features, 32)
+    dmlp_32 = DeepMLP(num_features, [16, 32, 16])
+    dmlp_64 = DeepMLP(num_features, [32, 64, 32])
+
+    models = [perceptron, mlp_16, mlp_32, dmlp_32, dmlp_64]
+
+    # Batches
+    batches = [5, 10, 50, 100]
+
+    # Epoch
+    epoch = [100, 200, 500]
+
+    return
+
+
+def main():
+
+    plot_service = PlotService()
+    file_name = "diabetes_pre_processed.txt"
+    num_features = 8
+
+    epochs = 100
+
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    # model = DeepMLP(num_features)
+    model = MLP(num_features)
     optimiser = torch.optim.SGD(model.parameters(), lr=0.1)
 
     # Binary classification
@@ -50,7 +220,14 @@ def main():
     )
 
     # Start program
-    model_service.start()
+    train_performance, valid_performance = model_service.start_model()
+
+    metric = {
+        "MLP": valid_performance
+    }
+
+    plot_service.plot_epochs(
+        epochs, metric, "Model Metrics", ["loss", "accuracy"])
 
     return
 
@@ -146,4 +323,5 @@ def plot_data():
 
 if __name__ == "__main__":
     # plot_data()
-    main()
+    # main()
+    GridSearch()

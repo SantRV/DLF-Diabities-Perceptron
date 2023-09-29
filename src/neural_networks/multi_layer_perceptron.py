@@ -2,7 +2,7 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, hidden_size=16):
+    def __init__(self, input_size, name, hidden_size=16):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
@@ -10,6 +10,7 @@ class MLP(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.dropout = nn.Dropout(0.2)  # Add dropout for regularization
         self.batchnorm = nn.BatchNorm1d(hidden_size)  # Add batch normalization
+        self.name = name
 
     def forward(self, x):
         x = self.fc1(x)
