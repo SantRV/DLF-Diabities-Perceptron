@@ -1,4 +1,5 @@
 
+import copy
 import torch
 from torch.utils.data import Dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score
@@ -143,7 +144,7 @@ class ModelService():
         return loss, accuracy, precision, recall
 
     def validate_model(self, model, dataloader):
-        results = NNMetrics()
+        results = NNMetrics(self.model.name)
         # Set to evaluation mode
         model.eval()
 
@@ -185,7 +186,8 @@ class ModelService():
 
         # Metrics
         train_metrics = NNMetrics(self.model.name)
-        valid_metrics = NNMetrics(self.model.name)
+        metric = NNMetrics(self.model.name)
+        valid_metrics = copy.deepcopy(metric)
 
         last_converge = 0
         num_convergence = 1

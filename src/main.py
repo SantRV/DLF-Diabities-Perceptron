@@ -152,8 +152,12 @@ def GridSearch():
         results: NNMetrics = result_queue.get()
         data.append(results)
 
+    models = {}
+    for model in data:
+        models[model.model_name] = model
+
     plot_service.plot_epochs(
-        epochs, data, "All Models Loss", ["loss"])
+        epochs, models, "All Models Loss", ["loss"])
 
     return
 
