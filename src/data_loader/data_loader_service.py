@@ -9,6 +9,9 @@ class DataLoaderService():
         self.utils = Utils()
         pass
 
+    def load_csv(self, file_name: str):
+        return self.utils.load_data_csv(file_name)
+
     def __load_data_from_file(self, file_name: str):
         return self.utils.load_data_txt(file_name)
 

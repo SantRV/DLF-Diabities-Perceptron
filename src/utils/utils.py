@@ -40,7 +40,7 @@ class Utils():
     def load_data_csv(self, file_name: str) -> pd.DataFrame:
        # Construct the full file path
         parsed_path = os.path.join(
-            Path().resolve().parent, "data", file_name)
+            Path().resolve(), "data", file_name)
 
         df = pd.read_csv(parsed_path)
 

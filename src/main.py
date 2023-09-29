@@ -1,9 +1,12 @@
 
 
+from data_loader.data_loader_service import DataLoaderService
 from model_service.model_service import ModelService
+from neural_networks.deep_mlp import DeepMLP
 from neural_networks.multi_layer_perceptron import MLP
 from neural_networks.perceptron import Perceptron
 from data_loader.torch_data import TorchData
+from plot_service.plot_service import PlotService
 from utils.utils import Utils
 import torch
 import torch.nn as nn
@@ -11,48 +14,10 @@ import pandas as pd
 from torch.utils.data import DataLoader
 
 
-def predict(model, data):
-    model.eval()
-    # model is self(VGG class's object)
-
-    return model(data)
-
-
-def train(dataloader, model, loss_fn, optimiser, epoch, epochs):
-    for batch in dataloader:
-        features, target = batch
-        optimiser.zero_grad()
-        output = model(features)
-        loss = loss_fn(output, target.view(-1))
-        loss.backward()
-        optimiser.step()
-
-    print(f"Epoch [{epoch + 1}/{epochs}], Loss: {loss.item()}")
-
-    # print(f"Epoch [{epoch + 1}/{epochs}], Loss: {loss.item()}")
-
-    # for batch in dataloader:
-    #     features, target = batch
-    #     X, y = features.to(device), target.to(device)
-
-    #     # Prediction
-    #     pred = model(X)
-    #     loss = loss_fn(pred, y)
-
-    #     # Backpropagation
-    #     loss.backward()
-    #     optimiser.step()
-    #     optimiser.zero_grad()
-
-    #     loss, current = loss.item(), (i + 1) * len(X)
-    #     print(f"loss: {loss:>7f} [{current}/{size}]")
-    #     i += 1
-
-
 def main():
     file_name = "diabetes_pre_processed.txt"
     num_features = 8
-    epochs = 100
+    epochs = 300
 
     device = (
         "cuda"
@@ -62,7 +27,7 @@ def main():
         else "cpu"
     )
 
-    model = MLP(num_features)
+    model = DeepMLP(num_features)
     optimiser = torch.optim.SGD(model.parameters(), lr=0.1)
 
     # Binary classification
@@ -81,7 +46,7 @@ def main():
         training_size=0.7,
         validation_size=0.15,
         device=device,
-        batch_size=5
+        batch_size=10
     )
 
     # Start program
@@ -93,7 +58,7 @@ def main():
 def main2():
     file_name = "diabetes_pre_processed.txt"
     num_features = 8
-    epochs = 100
+    epochs = 500
     device = (
         "cuda"
         if torch.cuda.is_available()
@@ -126,7 +91,7 @@ def main2():
     criterion = nn.BCEWithLogitsLoss()
 
     # Training loop
-    epochs = 100
+    epochs = 500
     testData = None
     best_model = None
     best_loss = float('inf')
@@ -166,5 +131,19 @@ def main2():
     print(f"Y: {target.view(-1)} Prediction: {predictions.view(-1)} Loss {loss.item()} Pred: {binary_predictions}")
 
 
+def plot_data():
+    file_name = "diabetes.csv"
+    target_feature = "Outcome"
+
+    data_service = DataLoaderService()
+    plot_service = PlotService()
+
+    df = data_service.load_csv(file_name)
+
+    # Plot distribution plot
+    plot_service.plot_data_distribution(df, target_feature)
+
+
 if __name__ == "__main__":
+    # plot_data()
     main()

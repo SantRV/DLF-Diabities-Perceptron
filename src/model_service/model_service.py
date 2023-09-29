@@ -70,9 +70,9 @@ class ModelService():
             running_loss += loss.item()
 
             # Print statistics every 2000 minibatches
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 50 == 0:
                 print(
-                    f"Epoch [{epoch + 1}, Batch {i + 1}] Loss: {running_loss / 100:.3f}")
+                    f"Epoch [{epoch + 1}, Batch {i + 1}] Loss: {running_loss / 50:.3f}")
                 running_loss = 0.0
 
         return running_loss
@@ -191,6 +191,7 @@ class ModelService():
         best_valid_performance = None
 
         last_converge = 0
+        num_convergence = 1
         for epoch in range(self.num_epoch):
             # Train model and get running loss
             ctrain_perform = self.train_model_one_epoch(
@@ -218,12 +219,40 @@ class ModelService():
 
                 # Adjust learning rate
                 for param_group in self.optimiser_func.param_groups:
-                    param_group['lr'] = initial_lr * 0.8
+                    param_group['lr'] = (initial_lr) / (num_convergence)
+                    print(
+                        f"=>[[Convergence {num_convergence}] Learning Rate {(initial_lr) / (num_convergence)} ")
 
-            if last_converge > 20:
+                    initial_lr = (initial_lr) / (num_convergence)
+
+                    num_convergence += 1
+
+            else:
+                # Reduce learning rate linearly
                 # Adjust learning rate
                 for param_group in self.optimiser_func.param_groups:
-                    param_group['lr'] = initial_lr * 10
+                    initial_lr = initial_lr * 0.9
+                    param_group['lr'] = initial_lr
+
+            # if last_converge > 20:
+            #     # Adjust learning rate
+            #     for param_group in self.optimiser_func.param_groups:
+            #         param_group['lr'] = (initial_lr) / num_convergence + 1
+            #         print(
+            #             f"=>[[Convergence {num_convergence}] Learning Rate {(initial_lr ) / num_convergence + 1} ")
+
+            #         initial_lr = (initial_lr) / num_convergence + 1
+
+            #         num_convergence += 1
+
+            if last_converge > 100:
+
+                # Adjust learning rate
+                initial_lr = 2
+                for param_group in self.optimiser_func.param_groups:
+                    param_group['lr'] = initial_lr
+                print(
+                    f"=>[[Convergence {num_convergence}] Learning Rate {initial_lr} ")
 
                 last_converge = 0
 

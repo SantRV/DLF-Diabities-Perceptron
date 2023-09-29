@@ -1,4 +1,4 @@
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
@@ -6,6 +6,20 @@ import pandas as pd
 class PlotService():
     def __init__(self) -> None:
         pass
+
+    def plot_data_distribution(self, input_data, target_feature):
+        # Create a histogram using Seaborn
+        plt.figure(figsize=(8, 6))
+        sns.set(style="whitegrid")
+        sns.countplot(x=target_feature, data=input_data, palette="Set3")
+
+        # Add labels and title
+        plt.xlabel(target_feature)
+        plt.ylabel("Count")
+        plt.title(f"Distribution of {target_feature}")
+
+        # Show the plot
+        plt.show()
 
     def plot_correlations(self, input_data, target_column=None):
         data = input_data.copy()
